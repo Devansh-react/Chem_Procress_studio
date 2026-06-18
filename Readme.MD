@@ -1,8 +1,8 @@
 # Chem Process Studio
 
-An AI-assisted chemical reaction prediction platform. Users submit SMILES strings and reaction conditions; the system validates input, retrieves relevant context from documents and curated chemistry data, predicts outcomes, and explains mechanisms with safety notes.
+An AI-assisted chemical reaction prediction platform. Users submit SMILES strings and reaction conditions; the system validates input, retrieves relevant context from documents, predicts outcomes, and generates explanation reports.
 
-> **Status:** Early development. Core orchestration, API, and frontend layers are planned; RAG retrieval, SMILES validation, and PDF ingestion are in progress.
+> **Status:** Early development. SMILES validation, PDF ingestion, document retrieval, and explanation generation are implemented. API and workflow orchestration are scaffolded, while prediction and frontend integration remain planned.
 
 ---
 
@@ -69,12 +69,12 @@ flowchart TB
 | ------------- | --------------------------------------------- |
 | Frontend      | React (planned)                               |
 | API           | FastAPI, JWT auth (planned)                   |
-| Orchestration | LangGraph, LangChain                          |
-| Chemistry     | RDKit, PubChemPy, SELFIES                     |
-| Prediction    | Ollama / Qwen (planned)                       |
-| Explanation   | Google Gemini, OpenAI (planned)               |
-| RAG           | ChromaDB, HuggingFace embeddings, PyPDF       |
-| Storage       | PostgreSQL, Redis, ChromaDB, S3 / local files |
+| Orchestration | LangGraph / LangChain (planned)               |
+| Chemistry     | RDKit                                       |
+| Prediction    | Ollama / Qwen (planned)                      |
+| Explanation   | LLM report generation via `utils.llm`         |
+| RAG           | ChromaDB, HuggingFace embeddings, PyPDFLoader |
+| Storage       | ChromaDB, local persistence, planned PostgreSQL |
 
 ---
 
@@ -82,19 +82,36 @@ flowchart TB
 
 ```
 Chem_Procress_studio/
-├── agents/                 # LangGraph agent nodes
-│   ├── retriever.py        # RAG context retrieval
-│   └── validator.py        # SMILES validation & condition checks
-├── graph/                  # LangGraph workflow & routing
-│   └── router.py
+├── agents/                 # Agent modules for validation, retrieval, explanation, and workflow nodes
+│   ├── explainer.py         # Builds explanation report prompts and calls LLM
+│   ├── retriever.py         # Retrieves PDF-based context using RAG
+│   ├── validator.py         # Validates SMILES and checks reaction conditions
+│   ├── supervisor.py        # Workflow supervisor placeholder
+│   ├── predictor.py         # Prediction agent placeholder
+│   └── verifier.py          # Verification agent placeholder
+├── api/                    # API entrypoints and server code
+│   └── main.py              # FastAPI server stub (empty)
+├── graph/                  # Workflow graph scaffolding and state management
+│   ├── builder.py           # Graph builder placeholder
+│   ├── checkpoints.py       # Checkpointing placeholder
+│   ├── edges.py             # Workflow edge definitions placeholder
+│   ├── router.py            # Workflow router placeholder
+│   └── state.py             # Graph state placeholder
 ├── Services/               # Service-layer handlers
-│   └── pdf_inestion_services.py
+│   └── pdf_inestion_services.py  # PDF upload and ingestion orchestration
 ├── tools/
 │   ├── chemistry/          # RDKit utilities
-│   ├── prediction/         # Reaction prediction (planned)
-│   └── retrieval/          # PDF loading, chunking, ChromaDB
+│   │   └── RDKit_tool.py      # SMILES parsing, canonicalization, and validation
+│   ├── prediction/         # Reaction prediction tools (planned)
+│   │   └── Rxn_predict_tool.py
+│   └── retrieval/          # PDF loading, chunking, ChromaDB retrieval
+│       ├── chroma_tool.py
+│       ├── pdf_loader.py
+│       ├── RAG_tool.py
+│       └── text_splitter.py
 ├── utils/
-│   └── schemas_chat.py     # Shared state schemas (ReactionState)
+│   ├── llm.py               # LLM wrapper for OpenAI / future model calls
+│   └── schemas_chat.py      # Shared typed state schema `ReactionState`
 ├── requirements.txt
 └── Arciture_Diagram.png
 ```
@@ -149,17 +166,17 @@ Embedding_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 | Component                           | Status      |
 | ----------------------------------- | ----------- |
-| SMILES validation (RDKit)           | In progress |
-| PDF ingestion & chunking            | In progress |
-| ChromaDB vector store & retrieval   | In progress |
-| Retriever agent                     | In progress |
-| LangGraph supervisor & routing      | Planned     |
-| FastAPI endpoints                   | Planned     |
-| Reaction prediction (Ollama / Qwen) | Planned     |
-| Credibility & safety checks         | Planned     |
-| LLM explainer                       | Planned     |
-| React frontend                      | Planned     |
-| PostgreSQL persistence              | Planned     |
+| SMILES validation (RDKit)           | Implemented |
+| PDF ingestion & chunking            | Implemented |
+| ChromaDB vector store & retrieval   | Implemented |
+| Retriever agent                     | Implemented |
+| Explanation report generation       | Implemented |
+| LangGraph supervisor & routing      | Scaffolded / placeholder |
+| FastAPI endpoints                   | Stub / planned |
+| Reaction prediction (Ollama / Qwen) | Planned |
+| Credibility & safety checks         | Planned |
+| React frontend                      | Planned |
+| PostgreSQL persistence              | Planned |
 
 ---
 
@@ -167,9 +184,10 @@ Embedding_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 | Method | Endpoint        | Description                                       |
 | ------ | --------------- | ------------------------------------------------- |
-| `POST` | `/predict`      | Predict reaction outcome from SMILES + conditions |
-| `POST` | `/chat`         | Conversational chemistry assistant                |
-| `POST` | `/upload-model` | Upload custom model or reference documents        |
+| `POST` | `/predict`      | Predict reaction outcome from SMILES + conditions (planned) |
+| `POST` | `/chat`         | Conversational chemistry assistant (planned)      |
+| `POST` | `/upload-model` | Upload custom model or reference documents (planned) |
+| `POST` | `/upload-pdf`   | Upload target PDF documents for RAG ingestion (planned) |
 
 ---
 
