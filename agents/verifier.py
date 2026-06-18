@@ -1,81 +1,172 @@
 from dataclasses import dataclass
 
-from tools.chemistry.RDKit_tool import validate_smiles
 from utils.schemas_chat import ReactionState as State
-from tools.verification.Context_verifier import verify_prediction_with_context
-from tools.verification.mechaism_verifier import validate_mechanism
+
+from tools.chemistry.RDKit_tool import (
+    validate_smiles
+)
+
+from tools.verification.Context_verifier import (
+    verify_prediction_with_context
+)
+
+from tools.verification.mechaism_verifier import (
+    validate_mechanism
+)
+
 
 @dataclass
-class validation_results:
-    smiles_validation:bool
-    retrieved_context_validation:bool
-    mechanism_validation:bool
-    
-    
-def verifier_agent(state:State, validation_results:validation_results):
+class ValidationResults:
+    smiles_validation: bool = False
+    retrieved_context_validation: bool = False
+    mechanism_validation: bool = False
 
-# validate the smiles using RDKit
-    output = state.get("prediction")
+
+def verifier_agent(state: State):
+
+    validation = ValidationResults()
+
+    context_score = 0.0
+    mechanism_score = 0.0
+
+    # ==========================
+    # Prediction Validation
+    # ==========================
+    output = state.get(
+        "prediction",
+        ""
+    )
+
     if not output:
-        validation_results.smiles_validation = False
-        return validation_results
-    
-    validation_result_1= validate_smiles(output)
-    if not validation_result_1["is_valid"]:
-        validation_results.smiles_validation = False
-    else :
-        validation_results.smiles_validation = True
-        
-#  validation the smiles using the retrieved document context and c onfidence score 
-    prediction_mechanism = state.get("mechanism") or ""
-    retrived_context = state.get("retrieved_context", [])
-    confidence = state.get("confidence", 0.0)
-    raw_score = verify_prediction_with_context(prediction_mechanism, retrived_context,confidence)
-    
-    if isinstance(raw_score,float):
-        score = raw_score
-    else:
-        score = 0.0
-    
-    if score < 0.25:
-        validation_results.retrieved_context_validation = False
-    else:
-        validation_results.retrieved_context_validation = True
-        
-    rectant  = state.get("canonical_smiles") or state.get("smiles") or ""
-    
-    condition = state.get("conditions",{})
-    
-    mechanism_result = validate_mechanism(rectant, condition, prediction_mechanism, output, retrived_context)
-    
-    if mechanism_result < 0.5:
-        validation_results.mechanism_validation = False
-    else:
-        validation_results.mechanism_validation = True
-    
-    
-    
-    
-    
-    
-    
-    
-    # {
-#     "smiles": "CCBr",
-#     "canonical_smiles": "CCBr",
-#     "conditions": {
-#         "reagent": "NaOH"
-#     },
 
-#     "retrieved_context": [...],
+        return {
+            "validation_results": {
+                "smiles_validation": False,
+                "retrieved_context_validation": False,
+                "mechanism_validation": False
+            },
+            "validation_scores": {
+                "context_score": 0.0,
+                "mechanism_score": 0.0
+            },
 
-#     "prediction": "CCOH",
-#     "confidence": 0.85,
-#     "mechanism": "SN2",
-#     "prediction_metadata": {...}
-# }
-    
+        }
 
-    
-    
-    
+    # ==========================
+    # RDKit Validation
+    # ==========================
+    rdkit_result = validate_smiles(
+        output
+    )
+
+    validation.smiles_validation = (
+        rdkit_result.get(
+            "is_valid",
+            False
+        )
+    )
+
+    # ==========================
+    # Context Validation
+    # ==========================
+    prediction_mechanism = (
+        state.get("mechanism")
+        or ""
+    )
+
+    retrieved_context = state.get(
+        "retrieved_context",
+        []
+    )
+
+    confidence = state.get(
+        "confidence",
+        0.0
+    )
+
+    raw_score = (
+        verify_prediction_with_context(
+            prediction_mechanism,
+            retrieved_context,
+            confidence
+        )
+    )
+
+    if isinstance(
+        raw_score,
+        (float, int)
+    ):
+        context_score = float(
+            raw_score
+        )
+
+    validation.retrieved_context_validation = (
+        context_score >= 0.25
+    )
+
+    # ==========================
+    # Mechanism Validation
+    # ==========================
+    reactant = (
+        state.get(
+            "canonical_smiles"
+        )
+        or state.get(
+            "smiles",
+            ""
+        )
+    )
+
+    conditions = state.get(
+        "conditions",
+        {}
+    )
+
+    raw_mechanism_score = (
+        validate_mechanism(
+            reactant,
+            conditions,
+            prediction_mechanism,
+            output,
+            retrieved_context
+        )
+    )
+
+    if isinstance(
+        raw_mechanism_score,
+        (float, int)
+    ):
+        mechanism_score = float(
+            raw_mechanism_score
+        )
+
+    validation.mechanism_validation = (
+        mechanism_score >= 0.50
+    )
+
+    # ==========================
+    # Return State Update
+    # ==========================
+    return {
+
+        "validation_results": {
+
+            "smiles_validation":
+                validation.smiles_validation,
+
+            "retrieved_context_validation":
+                validation.retrieved_context_validation,
+
+            "mechanism_validation":
+                validation.mechanism_validation
+        },
+
+        "validation_scores": {
+
+            "context_score":
+                context_score,
+
+            "mechanism_score":
+                mechanism_score
+        }
+    }

@@ -19,7 +19,16 @@ class ReactionState(TypedDict):
     prediction_metadata:Optional[Dict[str,str]]
     
     
+    validation_results:Optional[Dict[str,bool]]
+    validation_scores:Optional[Dict[str,float]]
+    
+    
+    explanation_report: Optional[str]
+    
     warnings:List[str]
+    
+    
+    #  conversational history
     messages:Optional[List[str]]
     
     
