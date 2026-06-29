@@ -1,200 +1,173 @@
 # Chem Process Studio
 
-An AI-assisted chemical reaction prediction platform. Users submit SMILES strings and reaction conditions; the system validates input, retrieves relevant context from documents, predicts outcomes, and generates explanation reports.
+Chem Process Studio is an early-stage AI-assisted chemistry workflow for reaction prediction, document-grounded context retrieval, and explanation generation. The current codebase combines chemistry tooling, retrieval-augmented generation, and agent-oriented orchestration around a shared workflow state.
 
-> **Status:** Early development. SMILES validation, PDF ingestion, document retrieval, and explanation generation are implemented. API and workflow orchestration are scaffolded, while prediction and frontend integration remain planned.
+> Status: partially implemented. Core chemistry validation, PDF ingestion, vector retrieval, prediction scaffolding, explanation generation, and middleware modules are present, while the API layer and some orchestration pieces are still being completed.
 
 ---
 
-## Architecture
+## What is implemented today
 
-### Mermaid diagram
+- SMILES validation and canonicalization with RDKit
+- PDF loading, chunking, and ingestion for retrieval
+- Chroma-based vector storage and retrieval using similarity and MMR search
+- A typed workflow state for reaction-related tasks
+- Agent modules for validation, retrieval, prediction, explanation, verifier, supervisor, and human review
+- Middleware helpers for retries, human review conditions, model/tool limits, and logging scaffolding
+- A service layer for PDF ingestion
 
-```mermaid
-flowchart TB
-    subgraph FE["Frontend Layer"]
-        UI["React Web App<br/>SMILES + reaction conditions input"]
-    end
+---
 
-    subgraph API["API Layer"]
-        GW["API Gateway — FastAPI<br/>JWT auth · /predict · /chat · /upload-model"]
-    end
+## High-level workflow
 
-    subgraph ORCH["Orchestration Layer"]
-        SUP["Supervisor Agent — LangGraph<br/>Routes tasks · graph state · checkpointing"]
-        INP["Input parser<br/>Normalize SMILES + conditions"]
-        VAL["Validate SMILES — RDKit<br/>Fail fast on invalid input"]
-        CHK["Check conditions<br/>Are conditions present?"]
-        HIL["Human-in-loop<br/>Ask user or use standard"]
-        RAG["RAG retriever — ChromaDB<br/>User docs + curated chem DB"]
-    end
-
-    subgraph TOOLS["Tools Layer"]
-        PRED["Ollama predictor — Qwen<br/>Fine-tuned reaction dataset"]
-        CRED["Credibility check<br/>RDKit · confidence · DB cross-ref"]
-        SAFE["Safety flag check<br/>Toxicity · hazard warnings"]
-        EXPL["Gemini / OpenAI explainer<br/>Mechanism · yield · safety notes"]
-        RETRY["Retry node<br/>Re-prompt Ollama"]
-    end
-
-    subgraph STORE["Storage Layer"]
-        PG[("PostgreSQL<br/>Users · history · feedback")]
-        CHROMA[("ChromaDB<br/>Vector embeddings · RAG")]
-        S3[("S3 / Local<br/>PDFs · model files")]
-    end
-
-    UI --> GW
-    GW --> SUP
-    SUP --> INP --> VAL --> CHK --> RAG --> PRED --> CRED --> SAFE --> EXPL
-    EXPL --> GW
-
-    VAL -.->|invalid| GW
-    CHK -.->|missing| HIL
-    HIL --> CHK
-    CRED -.->|low conf.| RETRY
-    RETRY --> PRED
-    EXPL -.->|error| RETRY
-
-    RAG -.-> CHROMA
-    GW -.-> PG
-    RAG -.-> S3
-    PRED -.-> S3
-```
+1. A user provides a SMILES string and reaction conditions.
+2. The validation agent checks whether the molecule is syntactically valid and structurally acceptable.
+3. Uploaded PDFs can be ingested into the retrieval system for external context.
+4. The retriever searches the indexed documents for relevant chemistry context.
+5. The predictor builds a reaction prediction output using the current tool pipeline.
+6. The explainer converts the workflow state into a readable report.
+7. Retry and human-review hooks can be triggered based on validation and confidence conditions.
 
 ---
 
 ## Tech stack
 
-| Layer         | Technologies                                  |
-| ------------- | --------------------------------------------- |
-| Frontend      | React (planned)                               |
-| API           | FastAPI, JWT auth (planned)                   |
-| Orchestration | LangGraph / LangChain (planned)               |
-| Chemistry     | RDKit                                       |
-| Prediction    | Ollama / Qwen (planned)                      |
-| Explanation   | LLM report generation via `utils.llm`         |
-| RAG           | ChromaDB, HuggingFace embeddings, PyPDFLoader |
-| Storage       | ChromaDB, local persistence, planned PostgreSQL |
+- Python 3.10+
+- FastAPI (API entrypoint scaffolded)
+- LangChain and LangGraph-based agent orchestration
+- RDKit for chemistry validation
+- ChromaDB with HuggingFace embeddings for retrieval
+- PyPDF and text splitting utilities for document ingestion
+- Google/OpenAI LLM wrappers via LangChain
+- PostgreSQL and Docker support are planned but not yet fully wired in
 
 ---
 
-## Project structure
+## Repository structure
 
-```
+```text
 Chem_Procress_studio/
-├── agents/                 # Agent modules for validation, retrieval, explanation, and workflow nodes
-│   ├── explainer.py         # Builds explanation report prompts and calls LLM
-│   ├── retriever.py         # Retrieves PDF-based context using RAG
-│   ├── validator.py         # Validates SMILES and checks reaction conditions
-│   ├── supervisor.py        # Workflow supervisor placeholder
-│   ├── predictor.py         # Prediction agent placeholder
-│   └── verifier.py          # Verification agent placeholder
-├── api/                    # API entrypoints and server code
-│   └── main.py              # FastAPI server stub (empty)
-├── graph/                  # Workflow graph scaffolding and state management
-│   ├── builder.py           # Graph builder placeholder
-│   ├── checkpoints.py       # Checkpointing placeholder
-│   ├── edges.py             # Workflow edge definitions placeholder
-│   ├── router.py            # Workflow router placeholder
-│   └── state.py             # Graph state placeholder
-├── Services/               # Service-layer handlers
-│   └── pdf_inestion_services.py  # PDF upload and ingestion orchestration
+├── agents/
+│   ├── explainer.py
+│   ├── human_review.py
+│   ├── predictor.py
+│   ├── retriever.py
+│   ├── supervisor.py
+│   ├── validator.py
+│   └── verifier.py
+├── api/
+│   └── main.py
+├── database/
+│   ├── chroma/
+│   └── postgress/
+├── graph/
+│   └── state.py
+├── middleware/
+│   ├── guardrails.py
+│   ├── interrupts.py
+│   ├── limits.py
+│   ├── logging.py
+│   └── retry.py
+├── prompts/
+│   ├── explainer_prompt.py
+│   ├── prediction_prompt.py
+│   ├── Retriever_prompt.py
+│   ├── Validator_prompt.py
+│   └── verifier_prompt.py
+├── services/
+│   └── pdf_inestion_services.py
+├── skills/
+│   ├── explain.md
+│   ├── literature_search.md
+│   ├── predict.md
+│   ├── report.md
+│   └── Validate.md
 ├── tools/
-│   ├── chemistry/          # RDKit utilities
-│   │   └── RDKit_tool.py      # SMILES parsing, canonicalization, and validation
-│   ├── prediction/         # Reaction prediction tools (planned)
+│   ├── chemistry/
+│   │   └── RDKit_tool.py
+│   ├── prediction/
 │   │   └── Rxn_predict_tool.py
-│   └── retrieval/          # PDF loading, chunking, ChromaDB retrieval
-│       ├── chroma_tool.py
-│       ├── pdf_loader.py
-│       ├── RAG_tool.py
-│       └── text_splitter.py
+│   ├── retrieval/
+│   │   ├── chroma_tool.py
+│   │   ├── pdf_loader.py
+│   │   ├── RAG_tool.py
+│   │   └── text_splitter.py
+│   └── verification/
+│       ├── Context_verifier.py
+│       └── mechaism_verifier.py
 ├── utils/
-│   ├── llm.py               # LLM wrapper for OpenAI / future model calls
-│   └── schemas_chat.py      # Shared typed state schema `ReactionState`
+│   ├── agent_registry.py
+│   ├── llm.py
+│   └── schema.py
+├── docker-compose.yml
 ├── requirements.txt
-└── Arciture_Diagram.png
+└── Readme.MD
 ```
 
 ---
 
-## Getting started
+## Setup
 
 ### Prerequisites
 
 - Python 3.10+
-- [Ollama](https://ollama.com/) (for local prediction, planned)
-- PostgreSQL (planned)
-- Node.js (for frontend, planned)
+- A compatible LLM provider configuration for the LangChain wrappers
+- Optional: Chroma persistence directory already prepared under the project database folder
 
-### Setup
+### Install dependencies
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Chem_Procress_studio
-
-# Create and activate a virtual environment
 python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
-
-# Install dependencies
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ### Environment variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root with values such as:
 
 ```env
 Embedding_MODEL=sentence-transformers/all-MiniLM-L6-v2
-
-# Planned
-# OPENAI_API_KEY=
-# GOOGLE_API_KEY=
-# DATABASE_URL=postgresql://user:pass@localhost/chem_studio
+OPENAI_API_KEY=your_key_here
+GOOGLE_API_KEY=your_key_here
 ```
 
 ---
 
-## Current implementation
+## Current implementation status
 
-| Component                           | Status      |
-| ----------------------------------- | ----------- |
-| SMILES validation (RDKit)           | Implemented |
-| PDF ingestion & chunking            | Implemented |
-| ChromaDB vector store & retrieval   | Implemented |
-| Retriever agent                     | Implemented |
-| Explanation report generation       | Implemented |
-| LangGraph supervisor & routing      | Scaffolded / placeholder |
-| FastAPI endpoints                   | Stub / planned |
-| Reaction prediction (Ollama / Qwen) | Planned |
-| Credibility & safety checks         | Planned |
-| React frontend                      | Planned |
-| PostgreSQL persistence              | Planned |
-
----
-
-## API endpoints (planned)
-
-| Method | Endpoint        | Description                                       |
-| ------ | --------------- | ------------------------------------------------- |
-| `POST` | `/predict`      | Predict reaction outcome from SMILES + conditions (planned) |
-| `POST` | `/chat`         | Conversational chemistry assistant (planned)      |
-| `POST` | `/upload-model` | Upload custom model or reference documents (planned) |
-| `POST` | `/upload-pdf`   | Upload target PDF documents for RAG ingestion (planned) |
+| Area | Status |
+| --- | --- |
+| SMILES validation | Implemented |
+| Molecule canonicalization | Implemented |
+| PDF ingestion | Implemented |
+| Document chunking | Implemented |
+| Chroma-based retrieval | Implemented |
+| Validation agent | Implemented |
+| Retriever agent | Implemented |
+| Predictor agent | Scaffolded with a placeholder pipeline |
+| Explainer agent | Implemented |
+| Verifier agent | Present as module scaffolding |
+| Supervisor orchestration | Partial / in progress |
+| FastAPI endpoints | Not yet implemented |
+| Frontend | Not yet implemented |
+| Database persistence | Planned |
 
 ---
 
-## License
+## Notes on the current codebase
 
-TBD
+- The prediction flow is functional at the orchestration level but still uses an internal placeholder implementation in the reaction predictor tool.
+- The retrieval flow depends on ingested documents being available in the Chroma store.
+- The API server is currently a stub and needs endpoint definitions before it can be used as an application interface.
+- The middleware files are present and can be expanded for stricter guardrails, retries, and human review handling.
 
-## Contributing
+---
 
-This project is under active development. Contribution guidelines will be added as the codebase stabilizes.
+## Next steps
+
+- Implement FastAPI endpoints for prediction and document ingestion
+- Replace the placeholder prediction logic with a real model or external service
+- Expand verifier logic and confidence-based routing
+- Connect persistent storage and user history flows
+- Add a frontend interface for end-to-end usage
