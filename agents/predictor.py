@@ -1,4 +1,4 @@
-from utils.schemas_chat import ReactionState as State
+from utils.schema import ReactionState as State
 from tools.prediction.Rxn_predict_tool import ReactionPredictor
 
 def predict_reaction(state:State):

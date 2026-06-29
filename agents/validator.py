@@ -1,7 +1,7 @@
 
 from unittest import result
 
-from utils.schemas_chat import ReactionState as State
+from utils.schema import ReactionState as State
 from tools.chemistry import RDKit_tool
 
 def validate_agent(state:State):

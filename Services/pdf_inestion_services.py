@@ -1,4 +1,4 @@
-from utils.schemas_chat import ReactionState
+from utils.schema import ReactionState
 from tools.retrieval.RAG_tool import ingest_pdf
 
 

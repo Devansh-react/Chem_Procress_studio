@@ -19,15 +19,6 @@ def get_gemini_model():
 if not os.environ.get("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = getpass.getpass("")
     
-# def get_open_ai_model():
-#     return ChatOpenAI(
-#         model="gpt-4o",
-#         temperature=1.0,
-#         timeout=None,
-#         max_retries=2,
-#         verbose=True,
-#     )
-    
 
 # Example usage function
 def call_llm(prompt: str):

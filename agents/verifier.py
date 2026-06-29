@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from utils.schemas_chat import ReactionState as State
+from utils.schema import ReactionState as State
 
 from tools.chemistry.RDKit_tool import (
     validate_smiles
@@ -41,7 +41,7 @@ def verifier_agent(state: State):
 
         return {
             "validation_results": {
-                "smiles_validation": False,
+                "product_validation": False,
                 "retrieved_context_validation": False,
                 "mechanism_validation": False
             },
@@ -151,7 +151,7 @@ def verifier_agent(state: State):
 
         "validation_results": {
 
-            "smiles_validation":
+            "product_validation":
                 validation.smiles_validation,
 
             "retrieved_context_validation":

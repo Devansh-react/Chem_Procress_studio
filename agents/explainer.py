@@ -1,4 +1,4 @@
-from utils.schemas_chat import ReactionState as State 
+from utils.schema import ReactionState as State 
 from utils.llm import call_llm
 
 
