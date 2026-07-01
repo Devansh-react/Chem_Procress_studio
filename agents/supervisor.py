@@ -9,38 +9,4 @@ from langchain.agents import create_agent
 from deepagents.middleware.filesystem import FilesystemMiddleware
 
 
-middleware_list = [
-    
-    
-]
 
-subagents = [
-    {
-        "name": "",
-        "description": "This subagent can get",
-        "system_prompt": "",
-        "tools": [],
-        "model": model,
-        "middleware": [],
-    },
-]
-
-
-middleware_list = [
-    HumanInTheLoopMiddleware(
-        interrupt_on={
-            
-        }
-    )
-    
-    
-]
-
-
-
-supervisor_agent = create_agent(
-    model = model,
-    system_prompt = "...."  
-    subagents = subagents,
-    middleware= middleware_list
-)

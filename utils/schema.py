@@ -2,8 +2,6 @@ from typing import TypedDict, List, Dict, Optional, Literal, Any
 
 
 class HumanFeedback(TypedDict):
-    required:bool 
-    
     mode: Literal[
         "pre_prediction",
         "post_prediction"
@@ -18,7 +16,7 @@ class HumanFeedback(TypedDict):
     
     comment: Optional[str]
     
-    edited_feilds : Dict[str,Any]
+    edited_fields : Dict[str,Any]
     
     
 
